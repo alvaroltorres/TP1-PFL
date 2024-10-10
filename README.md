@@ -3,7 +3,7 @@
 ## Graph Representation of a Country
 
 ### Project developed by:
-    > Rodrigo Miranda up2022
+    > Rodrigo Miranda up202204916@up.pt
     > Álvaro Torres up202208954@up.pt
 
 ## Project collaboration
