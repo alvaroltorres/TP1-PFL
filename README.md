@@ -6,3 +6,16 @@
     > Rodrigo Miranda up2022
     > Álvaro Torres up202208954@up.pt
 
+## Project collaboration
+
+> Rodrigo Miranda - 50%:
+    > Tasks:
+
+> Álvaro Torres - 50%:
+    > Tasks:
+
+## shortestPath explanation
+
+
+
+## travelSales explanation
