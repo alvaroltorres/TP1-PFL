@@ -9,10 +9,10 @@
 ## Project collaboration
 
 > Rodrigo Miranda - 50%:
-    > Tasks:
+    > Tasks: development of the `cities`, `distance`, `pathDistance`, 
 
 > Álvaro Torres - 50%:
-    > Tasks:
+    > Tasks: development of the `areAdjacent`, `adjacent`, `rome`, 
 
 ## shortestPath explanation
 
