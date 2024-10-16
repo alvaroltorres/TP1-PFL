@@ -20,8 +20,8 @@ type Distance = Int
 
 type RoadMap = [(City,City,Distance)]
 
-{-- The cities function takes as arguments a RoadMap 
-and returns a List indicating with all the cities in that Roadmap.--}
+{-- The cities function takes as argument a RoadMap 
+and returns a List indicating all the cities in that Roadmap.--}
 cities :: RoadMap -> [City]
 -- queremos retornar a primeira de cada tuplo se não estiver na lista
 -- queremos retornar a segunda de cada tuplo se não estiver
@@ -39,7 +39,6 @@ citiesHelperFunction cidades (x:xs)
         | otherwise = citiesHelperFunction (a:b:cidades) xs
         where (a,b,c) = x
 
-
 {-- The areAdjacent function takes as arguments a RoadMap and two Cities 
 and returns a Bool indicating whether two cities are linked directly.--}
 areAdjacent :: RoadMap -> City -> City -> Bool
@@ -48,7 +47,6 @@ areAdjacent ((a,b,_):xs) c1 c2
     | a == c1 && b == c2 = True
     | a == c2 && b == c1 = True
     | otherwise = areAdjacent xs c1 c2
-
 
 {-- The distance function takes as arguments a RoadMap 
 and two cities and returns Nothing if there isn't a direct road between
@@ -70,9 +68,8 @@ adjacent ((a,b,d):xs) c1
     | b == c1 = (a, d) : adjacent xs c1
     | otherwise = adjacent xs c1
 
-
 {-- The pathDistance function takes as arguments a RoadMap 
-and a Path(list of cities) and returns the distance between them if there 
+and a Path (list of cities) and returns the distance between them if there 
 is a path between them in that roadmap (otherwise return Nothing).--}
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance [] _ = Nothing -- se não existir roadmap
@@ -85,18 +82,15 @@ pathDistance roadmap (a:b:xs) =
                 Nothing -> Nothing -- se algures não existir conexão direta, retorno
                 Just remainingDist -> Just (dist + remainingDist) -- se tudo correr bem, vou somando os valores dos paths intermediários
 
-
-
-
 {-- The rome function takes as argument a RoadMap and returns 
 a List of Cities with the highest number of roads connecting to them.
 It uses an auxiliary function cityDegrees that counts the number of connections for each city, taking as arguments a RoadMap and returning a List of (City,Int) Tuples.--}
 cityDegrees :: RoadMap -> [(City, Int)]
-cityDegrees roadMap = map (\xs -> (head xs, length xs)) (Data.List.group (Data.List.sort cities))
+cityDegrees roadMap = map (\xs -> (head xs, length xs)) (Data.List.group (Data.List.sort cities)) -- contar occorências de cada cidade e grupar e ordenar as cidades
   where cities = concatMap (\(a, b, _) -> [a, b]) roadMap
 
 rome :: RoadMap -> [City]
-rome roadMap = map fst (filter (\(_, degree) -> degree == maxDegree) degrees)
+rome roadMap = map fst (filter (\(_, degree) -> degree == maxDegree) degrees) -- filtrar e retornar as cidades com degree máximo
   where
     degrees = cityDegrees roadMap
     maxDegree = maximum (map snd degrees)
