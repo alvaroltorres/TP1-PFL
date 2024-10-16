@@ -20,7 +20,8 @@ type Distance = Int
 
 type RoadMap = [(City,City,Distance)]
 
-
+{-- The cities function takes as arguments a RoadMap 
+and returns a List indicating with all the cities in that Roadmap.--}
 cities :: RoadMap -> [City]
 -- queremos retornar a primeira de cada tuplo se não estiver na lista
 -- queremos retornar a segunda de cada tuplo se não estiver
@@ -48,6 +49,10 @@ areAdjacent ((a,b,_):xs) c1 c2
     | a == c2 && b == c1 = True
     | otherwise = areAdjacent xs c1 c2
 
+
+{-- The distance function takes as arguments a RoadMap 
+and two cities and returns Nothing if there isn't a direct road between
+the cities or the distance between them if some road exists. --}
 distance :: RoadMap -> City -> City -> Maybe Distance
 -- quero o tuplo em que essa primeira cidade aparece primeiro
 distance [] a b = Nothing
@@ -66,6 +71,9 @@ adjacent ((a,b,d):xs) c1
     | otherwise = adjacent xs c1
 
 
+{-- The pathDistance function takes as arguments a RoadMap 
+and a Path(list of cities) and returns the distance between them if there 
+is a path between them in that roadmap (otherwise return Nothing).--}
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance [] _ = Nothing -- se não existir roadmap
 pathDistance _ [] = Nothing -- se não houver cidades
