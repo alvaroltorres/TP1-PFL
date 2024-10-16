@@ -1,6 +1,7 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
+import Text.XHtml (base)
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -16,20 +17,51 @@ type Distance = Int
 
 type RoadMap = [(City,City,Distance)]
 
+
 cities :: RoadMap -> [City]
-cities = undefined -- modifiy this line to implement the solution, for each exercise not solved, leave the function definition like this
+-- queremos retornar a primeira de cada tuplo se não estiver na lista
+-- queremos retornar a segunda de cada tuplo se não estiver
+-- retornar ambas se nenhuma estiver
+-- senão (como ambas estão na lista), não adiciono
+cities [] = []
+cities roadmap = citiesHelperFunction [] roadmap
+
+citiesHelperFunction :: [City] -> RoadMap -> [City]
+citiesHelperFunction cidades [] = cidades
+citiesHelperFunction cidades (x:xs) 
+        | elem a cidades && elem b cidades = citiesHelperFunction cidades xs
+        | elem a cidades && not (elem b cidades) = citiesHelperFunction (b:cidades) xs
+        | not (elem a cidades) && elem b cidades = citiesHelperFunction (a:cidades) xs
+        | otherwise = citiesHelperFunction (a:b:cidades) xs
+        where (a,b,c) = x
+
 
 areAdjacent :: RoadMap -> City -> City -> Bool
 areAdjacent = undefined
 
 distance :: RoadMap -> City -> City -> Maybe Distance
-distance = undefined
+-- quero o tuplo em que essa primeira cidade aparece primeiro
+distance [] a b = Nothing
+distance ((x, y, z):xs) a b 
+    | ((a == x) && b == y) || (b == x && a == y) = Just z
+    | otherwise = distance xs a b
 
 adjacent :: RoadMap -> City -> [(City,Distance)]
 adjacent = undefined
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
-pathDistance = undefined
+pathDistance [] _ = Nothing -- se não existir roadmap
+pathDistance _ [] = Nothing -- se não houver cidades
+pathDistance _ [x] = Just 0 -- se houver apenas uma cidade no path (destino, final da recursão)
+pathDistance roadmap (a:b:xs) = 
+    case distance roadmap a b of
+        Nothing -> Nothing -- se não existir caminho direto entre a, b, retorno
+        Just dist -> case pathDistance roadmap (b:xs) of -- se existir, vou ver se no resto do path existem conexões
+                Nothing -> Nothing -- se algures não existir conexão direta, retorno
+                Just remainingDist -> Just (dist + remainingDist) -- se tudo correr bem, vou somando os valores dos paths intermediários
+
+
+
 
 rome :: RoadMap -> [City]
 rome = undefined
