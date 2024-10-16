@@ -5,10 +5,13 @@ import Text.XHtml (base)
 
 -- PFL 2024/2025 Practical assignment 1
 
--- Uncomment the some/all of the first three lines to import the modules, do not change the code of these lines.
--- The implemented assignment must run under GHC, version 9.10.1.
 {-- All code must be properly commented: each function should include
 the type declaration (signature) as well a brief description of the function’s goal and the meaning of the arguments.
+--}
+{--
+The evaluation focuses on
+implemented features, the quality and efficiency of the code and respective com
+ments, the readme file, and participation in the assignment and presentation.
 --}
 
 type City = String
@@ -36,8 +39,14 @@ citiesHelperFunction cidades (x:xs)
         where (a,b,c) = x
 
 
+{-- The areAdjacent function takes as arguments a RoadMap and two Cities 
+and returns a Bool indicating whether two cities are linked directly.--}
 areAdjacent :: RoadMap -> City -> City -> Bool
-areAdjacent = undefined
+areAdjacent [] _ _ = False
+areAdjacent ((a,b,_):xs) c1 c2
+    | a == c1 && b == c2 = True
+    | a == c2 && b == c1 = True
+    | otherwise = areAdjacent xs c1 c2
 
 distance :: RoadMap -> City -> City -> Maybe Distance
 -- quero o tuplo em que essa primeira cidade aparece primeiro
@@ -46,8 +55,16 @@ distance ((x, y, z):xs) a b
     | ((a == x) && b == y) || (b == x && a == y) = Just z
     | otherwise = distance xs a b
 
+{-- The adjacent function takes as arguments a RoadMap and a City 
+and returns a List of (City,Distance) Tuples. The goal of this function is to return the cities adjacent to the given city
+and the respective distance between them.--}
 adjacent :: RoadMap -> City -> [(City,Distance)]
-adjacent = undefined
+adjacent [] _ = []
+adjacent ((a,b,d):xs) c1
+    | a == c1 = (b, d) : adjacent xs c1
+    | b == c1 = (a, d) : adjacent xs c1
+    | otherwise = adjacent xs c1
+
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance [] _ = Nothing -- se não existir roadmap
@@ -63,8 +80,18 @@ pathDistance roadmap (a:b:xs) =
 
 
 
+{-- The rome function takes as argument a RoadMap and returns 
+a List of Cities with the highest number of roads connecting to them.
+It uses an auxiliary function cityDegrees that counts the number of connections for each city, taking as arguments a RoadMap and returning a List of (City,Int) Tuples.--}
+cityDegrees :: RoadMap -> [(City, Int)]
+cityDegrees roadMap = map (\xs -> (head xs, length xs)) (Data.List.group (Data.List.sort cities))
+  where cities = concatMap (\(a, b, _) -> [a, b]) roadMap
+
 rome :: RoadMap -> [City]
-rome = undefined
+rome roadMap = map fst (filter (\(_, degree) -> degree == maxDegree) degrees)
+  where
+    degrees = cityDegrees roadMap
+    maxDegree = maximum (map snd degrees)
 
 isStronglyConnected :: RoadMap -> Bool
 isStronglyConnected = undefined
