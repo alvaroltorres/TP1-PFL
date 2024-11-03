@@ -1,8 +1,7 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+
 
 
 -- PFL 2024/2025 Practical assignment 1
@@ -100,98 +99,134 @@ breadthFirstSearch roadMap startCity = bfs [startCity] []
           let neighbors = [neighbor | (neighbor, _) <- adjacent roadMap current]
           in bfs (queue ++ neighbors) (visited ++ [current])
 
+          
 {-- The isStronglyConnected function takes as arguments a RoadMap and checks if the roadMap is strongly connected using Kosaraju's algorithm, returning a Bool, (i.e., if every city is reachable from every other city).--}
 isStronglyConnected :: RoadMap -> Bool
 isStronglyConnected roadMap =
-    case allCitiesList of
-        [] -> True  -- considers an empty graph
-        (initialCity:_) ->
-            let reachableFromInitial = breadthFirstSearch roadMap initialCity
-                reversedRoadMap = [(c2, c1, dist) | (c1, c2, dist) <- roadMap]
-                reachableInReversed = breadthFirstSearch reversedRoadMap initialCity
-            in length reachableFromInitial == length allCitiesList && length reachableInReversed == length allCitiesList
-  where
-    allCitiesList = cities roadMap
+    let allCitiesList = cities roadMap
+        initialCity = case allCitiesList of
+            []     -> error "A lista de cidades está vazia"
+            (x:_)  -> x
+        reachableFromInitial = breadthFirstSearch roadMap initialCity
+        reversedRoadMap = [(c2, c1, dist) | (c1, c2, dist) <- roadMap]
+        reachableInReversed = breadthFirstSearch reversedRoadMap initialCity
+    in length reachableFromInitial == length allCitiesList && length reachableInReversed == length allCitiesList
 
--- shortestPath function using BFS to find all shortest paths between two cities
+
+
+-- shortestPath function using BFS to find all shortest paths between two cities without using Maps or Sets
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath roadMap start goal
-    | start == goal = [[start]]  -- If the same cities, return the trivial path
-    | otherwise     = bfs [[start]] [] Map.empty  -- Initialize BFS with the queue containing the initial path
+    | start == goal = [[start]]  -- Se as mesmas cidades, retorna o caminho trivial
+    | otherwise     = bfs [[start]] [] []  -- Inicializa o BFS com a fila contendo o caminho inicial e listas vazias
   where
     {-
-        bfs - Auxiliary function that performs bfs to find all shortest paths.
+        bfs - Função auxiliar que realiza o BFS para encontrar todos os caminhos mais curtos.
 
-        Parameters:
-        - queue: List of paths to be explored (acts as a queue).
-        - paths: Accumulated list of shortest paths found so far.
-        - visited: Map that stores the known minimum distance for each visited city.
+        Parâmetros:
+        - queue: Lista de caminhos a serem explorados (atua como uma fila).
+        - paths: Lista acumulada de caminhos mais curtos encontrados até agora.
+        - visited: Lista de tuplos (City, Distance) que armazenam a distância mínima conhecida para cada cidade visitada.
 
-        Returns:
-        - A list of shortest paths between 'start' and 'goal'.
+        Retorna:
+        - Uma lista de caminhos mais curtos entre 'start' e 'goal'.
     -}
-    bfs :: [Path] -> [Path] -> Map.Map City Distance -> [Path]
-    bfs [] paths _ = paths  -- If the queue is empty, return the paths found
+    bfs :: [Path] -> [Path] -> [(City, Distance)] -> [Path]
+    bfs [] paths _ = paths  -- Se a fila estiver vazia, retorna os caminhos encontrados
     bfs (currentPath:rest) paths visited
         | currentCity == goal =
-            let currentDist = fromJust (pathDistance roadMap currentPath)  -- Calculate the current path's distance
-                minDist = Map.findWithDefault maxBound goal visited  -- Get the known minimum distance for the goal
-                visited' = Map.insert goal currentDist visited  -- Update the visited map with the current distance for the goal
+            let currentDist = fromJust (pathDistance roadMap currentPath)  -- Calcula a distância do caminho atual
+                minDist = lookupDistance goal visited  -- Obtém a distância mínima conhecida para o goal
                 paths' = if currentDist < minDist
-                            then [currentPath]  -- Found a new shorter path; replace existing paths
+                            then [currentPath]  -- Encontrou um caminho mais curto; substitui os caminhos existentes
                             else if currentDist == minDist
-                                then currentPath : paths  -- Found a path with the same minimum distance; add to the list
-                                else paths  -- Longer path, ignore
-            in bfs rest paths' visited'  -- Continue BFS with the remaining queue
+                                then currentPath : paths  -- Encontrou um caminho com a mesma distância mínima; adiciona à lista
+                                else paths  -- Caminho mais longo; ignora
+                visited' = updateVisitedList currentPath goal currentDist visited  -- Atualiza a lista de visitados com a distância atual para o goal
+            in bfs rest paths' visited'  -- Continua o BFS com a fila restante
         | otherwise =
-            let neighbors = [neighbor | (neighbor, _) <- adjacent roadMap currentCity]  -- Get neighbors of the current city
-                validNeighbors = [neighbor | neighbor <- neighbors, isValidNeighbor neighbor currentPath visited]  -- Filter valid neighbors
-                newPaths = [currentPath ++ [neighbor] | neighbor <- validNeighbors]  -- Create new paths by adding valid neighbors
-                visited' = foldl updateVisited visited validNeighbors  -- Update the visited map with new distances
-            in bfs (rest ++ newPaths) paths visited'  -- Add new paths to the queue and continue BFS
-          where
-            currentCity = last currentPath  -- Current city is the last city in the current path
-
-            -- Auxiliary function to update the map of visited cities with their minimum distances
-            updateVisited :: Map.Map City Distance -> City -> Map.Map City Distance
-            updateVisited acc neighbor =
-                let newDist = fromJust (pathDistance roadMap (currentPath ++ [neighbor]))  -- Calculate the new distance to the neighbor
-                    currentMinDist = Map.findWithDefault maxBound neighbor acc  -- Get the known minimum distance to the neighbor
-                in if newDist <= currentMinDist
-                    then Map.insert neighbor newDist acc  -- if it's smaller or equal, update 
-                    else acc  -- Keep the existing distance if it's smaller
-
-    {-
-        isValidNeighbor - Determines if a neighbor should be explored in the next level of the search.
-
-        Parameters:
-        - neighbor: Neighboring city to be checked
-        - currentPath: Current path traversed up to the current city
-        - visited: Map of known minimum distances for visited cities
-
-        Returns:
-        - True if the neighbor is not already in the current path (avoids cycles) and the distance to it does not exceed the known minimum
-    -}
-    isValidNeighbor :: City -> Path -> Map.Map City Distance -> Bool
-    isValidNeighbor neighbor currentPath visited =
-        notElem neighbor currentPath && newDist <= Map.findWithDefault maxBound neighbor visited
+            let neighbors = [neighbor | (neighbor, _) <- adjacent roadMap currentCity]  -- Obtém os vizinhos da cidade atual
+                validNeighbors = [neighbor | neighbor <- neighbors, isValidNeighbor neighbor currentPath visited]  -- Filtra vizinhos válidos
+                newPaths = [currentPath ++ [neighbor] | neighbor <- validNeighbors]  -- Cria novos caminhos adicionando vizinhos válidos
+                visited' = foldl (\acc neighbor ->
+                                    let newPath = currentPath ++ [neighbor]
+                                        newDist = fromJust (pathDistance roadMap newPath)
+                                    in updateVisitedList newPath neighbor newDist acc
+                                 ) visited validNeighbors  -- Atualiza a lista de visitados com novas distâncias
+            in bfs (rest ++ newPaths) paths visited'  -- Adiciona novos caminhos à fila e continua o BFS
       where
-        newPath = currentPath ++ [neighbor]  -- Create a new path including the neighbor
-        newDist = fromJust (pathDistance roadMap newPath)  -- Calculate the total distance of the new path
+        currentCity = last currentPath  -- Cidade atual é a última cidade no caminho atual
 
     {-
-        fromJust - Extracts the value from a Maybe type, assuming it is Just.
+        updateVisitedList - Atualiza a lista de cidades visitadas com suas distâncias mínimas.
 
-        Parameters:
-        - maybeValue: A value of type Maybe a
+        Parâmetros:
+        - currentPath: O caminho atual sendo considerado.
+        - city: Cidade a ser atualizada.
+        - newDist: Nova distância para a cidade.
+        - acc: Lista acumulada de cidades visitadas com suas distâncias.
 
-        Returns:
-        - The value contained in Just
+        Retorna:
+        - Lista atualizada de cidades visitadas com suas distâncias.
+    -}
+    updateVisitedList :: Path -> City -> Distance -> [(City, Distance)] -> [(City, Distance)]
+    updateVisitedList currentPath city newDist acc =
+        case lookup city acc of
+            Nothing -> (city, newDist) : acc  -- Se a cidade não estiver na lista, adiciona-a
+            Just existingDist ->
+                if newDist <= existingDist
+                    then (city, newDist) : filter (\(c, _) -> c /= city) acc  -- Atualiza com a nova distância
+                    else acc  -- Mantém a distância existente se ela for menor
 
+    {-
+        isValidNeighbor - Determina se um vizinho deve ser explorado no próximo nível da busca.
+
+        Parâmetros:
+        - neighbor: Cidade vizinha a ser verificada.
+        - currentPath: Caminho atual percorrido até a cidade atual.
+        - visited: Lista de distâncias mínimas conhecidas para cidades visitadas.
+
+        Retorna:
+        - True se o vizinho não estiver já no caminho atual (evita ciclos) e a distância até ele não exceder a mínima conhecida.
+    -}
+    isValidNeighbor :: City -> Path -> [(City, Distance)] -> Bool
+    isValidNeighbor neighbor currentPath visited =
+        notElem neighbor currentPath && newDist <= lookupDistance neighbor visited
+      where
+        newPath = currentPath ++ [neighbor]  -- Cria um novo caminho incluindo o vizinho
+        newDist = fromJust (pathDistance roadMap newPath)  -- Calcula a distância total do novo caminho
+
+    {-
+        lookupDistance - Busca a distância mínima conhecida para uma cidade na lista de visitados.
+
+        Parâmetros:
+        - city: Cidade cuja distância está a ser buscada.
+        - visited: Lista de cidades visitadas com suas distâncias.
+
+        Retorna:
+        - A distância mínima conhecida se encontrada, caso contrário, um número muito grande.
+    -}
+    lookupDistance :: City -> [(City, Distance)] -> Distance
+    lookupDistance city [] = maxBound  -- Se não encontrado, retorna um número muito grande
+    lookupDistance city ((c, d):xs)
+        | c == city  = d
+        | otherwise   = lookupDistance city xs
+
+    {-
+        fromJust - Extrai o valor de um tipo Maybe, assumindo que é Just.
+
+        Parâmetros:
+        - maybeValue: Um valor do tipo Maybe a.
+
+        Retorna:
+        - O valor contido em Just.
+
+        Lança:
+        - Um erro se chamado com Nothing.
     -}
     fromJust :: Maybe a -> a
     fromJust (Just x) = x
-    fromJust Nothing = error "Unexpected Nothing value in fromJust"
+    fromJust Nothing  = error "Unexpected Nothing value in fromJust"
 
 {-- The travelSales function takes as argument a RoadMap and returns a solution of the Traveling Salesman Problem (TSP), that is the path of the traveling salesman, using a greedy approach.--}
 travelSales :: RoadMap -> Path
