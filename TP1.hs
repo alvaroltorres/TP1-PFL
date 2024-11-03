@@ -1,18 +1,8 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
-import Text.XHtml (base)
 
 -- PFL 2024/2025 Practical assignment 1
-
-{-- All code must be properly commented: each function should include
-the type declaration (signature) as well a brief description of the function’s goal and the meaning of the arguments.
---}
-{--
-The evaluation focuses on
-implemented features, the quality and efficiency of the code and respective com
-ments, the readme file, and participation in the assignment and presentation.
---}
 
 type City = String
 type Path = [City]
@@ -26,7 +16,7 @@ cities :: RoadMap -> [City]
 -- queremos retornar a primeira de cada tuplo se não estiver na lista
 -- queremos retornar a segunda de cada tuplo se não estiver
 -- retornar ambas se nenhuma estiver
--- senão (como ambas estão na lista), não adiciono
+-- senão (como ambas estão na lista), não se adiciona
 cities [] = []
 cities roadmap = citiesHelperFunction [] roadmap
 
@@ -78,15 +68,15 @@ pathDistance _ [x] = Just 0 -- se houver apenas uma cidade no path (destino, fin
 pathDistance roadmap (a:b:xs) = 
     case distance roadmap a b of
         Nothing -> Nothing -- se não existir caminho direto entre a, b, retorno
-        Just dist -> case pathDistance roadmap (b:xs) of -- se existir, vou ver se no resto do path existem conexões
+        Just dist -> case pathDistance roadmap (b:xs) of -- se existir, vemos se no resto do path existem conexões
                 Nothing -> Nothing -- se algures não existir conexão direta, retorno
-                Just remainingDist -> Just (dist + remainingDist) -- se tudo correr bem, vou somando os valores dos paths intermediários
+                Just remainingDist -> Just (dist + remainingDist) -- se tudo correr bem, soma-se os valores dos paths intermediários
 
 {-- The rome function takes as argument a RoadMap and returns 
 a List of Cities with the highest number of roads connecting to them.
 It uses an auxiliary function cityDegrees that counts the number of connections for each city, taking as arguments a RoadMap and returning a List of (City,Int) Tuples.--}
 cityDegrees :: RoadMap -> [(City, Int)]
-cityDegrees roadMap = map (\xs -> (head xs, length xs)) (Data.List.group (Data.List.sort cities)) -- contar occorências de cada cidade e grupar e ordenar as cidades
+cityDegrees roadMap = map (\xs -> (head xs, length xs)) (Data.List.group (Data.List.sort cities)) -- contar occorências de cada cidade e agrupar e ordenar as cidades
   where cities = concatMap (\(a, b, _) -> [a, b]) roadMap
 
 rome :: RoadMap -> [City]
@@ -95,14 +85,61 @@ rome roadMap = map fst (filter (\(_, degree) -> degree == maxDegree) degrees) --
     degrees = cityDegrees roadMap
     maxDegree = maximum (map snd degrees)
 
+{-- The breadthFirstSearch function takes as arguments a RoadMap and a City and performs a BFS to list all cities reachable from a starting city.--}
+breadthFirstSearch :: RoadMap -> City -> [City]
+breadthFirstSearch roadMap startCity = bfs [startCity] []
+  where
+    bfs [] visited = visited
+    bfs (current:queue) visited
+      | current `elem` visited = bfs queue visited
+      | otherwise =
+          let neighbors = [neighbor | (neighbor, _) <- adjacent roadMap current]
+          in bfs (queue ++ neighbors) (visited ++ [current])
+
+{-- The isStronglyConnected function takes as arguments a RoadMap and checks if the roadMap is strongly connected using Kosaraju's algorithm, returning a Bool, (i.e., if every city is reachable from every other city).--}
 isStronglyConnected :: RoadMap -> Bool
-isStronglyConnected = undefined
+isStronglyConnected roadMap =
+    let allCitiesList = cities roadMap
+        initialCity = head allCitiesList
+        reachableFromInitial = breadthFirstSearch roadMap initialCity
+        reversedRoadMap = [(c2, c1, dist) | (c1, c2, dist) <- roadMap]
+        reachableInReversed = breadthFirstSearch reversedRoadMap initialCity
+    in length reachableFromInitial == length allCitiesList && length reachableInReversed == length allCitiesList
 
+{-- The shortestPathAux function is an auxiliary function that performs BFS to find all shortest paths between two cities.
+shortestPathAux :: RoadMap -> City -> City -> [Path] -> [Path] -> [Path]
+shortestPathAux _ _ _ [] shortestPaths = shortestPaths
+shortestPathAux rm c2 (path:paths) shortestPaths
+    | last path == c2 = shortestPathAux rm c2 paths (path : shortestPaths)
+    | otherwise = shortestPathAux rm c2 (paths ++ newPaths) shortestPaths
+    where
+        currentCity = last path
+        neighbors = adjacent rm currentCity
+        newPaths = [path ++ [neighbor] | (neighbor,_) <- neighbors, neighbor `notElem` path]
+
+{-- The shortestPath function takes as arguments a RoadMap and two Cities 
+and returns a List of Paths indicating all the shortest paths between the two cities.--}
 shortestPath :: RoadMap -> City -> City -> [Path]
-shortestPath = undefined
+shortestPath rm c1 c2
+    | c1 == c2 = [[c1]]
+    | otherwise = shortestPathAux rm c2 [[c1]] []--}
 
+{-- The travelSales function takes as argument a RoadMap and returns a solution of the Traveling Salesman Problem (TSP), that is the path of the traveling salesman, using a greedy approach.--}
 travelSales :: RoadMap -> Path
-travelSales = undefined
+travelSales roadMap =
+    let allCities = cities roadMap
+        n = length allCities
+        distArray = Data.Array.array ((0, 0), (n - 1, n - 1)) 
+                    [((i, j), maybe (maxBound `div` 2) id (distance roadMap (allCities !! i) (allCities !! j))) 
+                    | i <- [0..n - 1], j <- [0..n - 1]]
+        startCity = 0
+        reachableCities = breadthFirstSearch roadMap (allCities !! startCity)
+        greedyPath currentCity visitedCities
+            | length visitedCities == n = visitedCities ++ [allCities !! startCity]
+            | otherwise =
+                let nextCity = snd $ minimum [(distArray Data.Array.! (currentCity, j), j) | j <- [0..n - 1], allCities !! j `notElem` visitedCities]
+                in greedyPath nextCity (visitedCities ++ [allCities !! nextCity])
+    in if length reachableCities == n then greedyPath startCity [allCities !! startCity] else []
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
