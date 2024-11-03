@@ -1,6 +1,9 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -76,9 +79,10 @@ pathDistance roadmap (a:b:xs) =
 a List of Cities with the highest number of roads connecting to them.
 It uses an auxiliary function cityDegrees that counts the number of connections for each city, taking as arguments a RoadMap and returning a List of (City,Int) Tuples.--}
 cityDegrees :: RoadMap -> [(City, Int)]
-cityDegrees roadMap = map (\xs -> (head xs, length xs)) (Data.List.group (Data.List.sort cities)) -- contar occorências de cada cidade e agrupar e ordenar as cidades
-  where cities = concatMap (\(a, b, _) -> [a, b]) roadMap
-
+cityDegrees roadMap = map (\(x:xs) -> (x, length (x:xs))) groupedCities
+  where
+    groupedCities = Data.List.group $ Data.List.sort allCities
+    allCities = concatMap (\(a, b, _) -> [a, b]) roadMap
 rome :: RoadMap -> [City]
 rome roadMap = map fst (filter (\(_, degree) -> degree == maxDegree) degrees) -- filtrar e retornar as cidades com degree máximo
   where
@@ -99,30 +103,95 @@ breadthFirstSearch roadMap startCity = bfs [startCity] []
 {-- The isStronglyConnected function takes as arguments a RoadMap and checks if the roadMap is strongly connected using Kosaraju's algorithm, returning a Bool, (i.e., if every city is reachable from every other city).--}
 isStronglyConnected :: RoadMap -> Bool
 isStronglyConnected roadMap =
-    let allCitiesList = cities roadMap
-        initialCity = head allCitiesList
-        reachableFromInitial = breadthFirstSearch roadMap initialCity
-        reversedRoadMap = [(c2, c1, dist) | (c1, c2, dist) <- roadMap]
-        reachableInReversed = breadthFirstSearch reversedRoadMap initialCity
-    in length reachableFromInitial == length allCitiesList && length reachableInReversed == length allCitiesList
+    case allCitiesList of
+        [] -> True  -- considers an empty graph
+        (initialCity:_) ->
+            let reachableFromInitial = breadthFirstSearch roadMap initialCity
+                reversedRoadMap = [(c2, c1, dist) | (c1, c2, dist) <- roadMap]
+                reachableInReversed = breadthFirstSearch reversedRoadMap initialCity
+            in length reachableFromInitial == length allCitiesList && length reachableInReversed == length allCitiesList
+  where
+    allCitiesList = cities roadMap
 
-{-- The shortestPathAux function is an auxiliary function that performs BFS to find all shortest paths between two cities.
-shortestPathAux :: RoadMap -> City -> City -> [Path] -> [Path] -> [Path]
-shortestPathAux _ _ _ [] shortestPaths = shortestPaths
-shortestPathAux rm c2 (path:paths) shortestPaths
-    | last path == c2 = shortestPathAux rm c2 paths (path : shortestPaths)
-    | otherwise = shortestPathAux rm c2 (paths ++ newPaths) shortestPaths
-    where
-        currentCity = last path
-        neighbors = adjacent rm currentCity
-        newPaths = [path ++ [neighbor] | (neighbor,_) <- neighbors, neighbor `notElem` path]
-
-{-- The shortestPath function takes as arguments a RoadMap and two Cities 
-and returns a List of Paths indicating all the shortest paths between the two cities.--}
+-- shortestPath function using BFS to find all shortest paths between two cities
 shortestPath :: RoadMap -> City -> City -> [Path]
-shortestPath rm c1 c2
-    | c1 == c2 = [[c1]]
-    | otherwise = shortestPathAux rm c2 [[c1]] []--}
+shortestPath roadMap start goal
+    | start == goal = [[start]]  -- If the same cities, return the trivial path
+    | otherwise     = bfs [[start]] [] Map.empty  -- Initialize BFS with the queue containing the initial path
+  where
+    {-
+        bfs - Auxiliary function that performs bfs to find all shortest paths.
+
+        Parameters:
+        - queue: List of paths to be explored (acts as a queue).
+        - paths: Accumulated list of shortest paths found so far.
+        - visited: Map that stores the known minimum distance for each visited city.
+
+        Returns:
+        - A list of shortest paths between 'start' and 'goal'.
+    -}
+    bfs :: [Path] -> [Path] -> Map.Map City Distance -> [Path]
+    bfs [] paths _ = paths  -- If the queue is empty, return the paths found
+    bfs (currentPath:rest) paths visited
+        | currentCity == goal =
+            let currentDist = fromJust (pathDistance roadMap currentPath)  -- Calculate the current path's distance
+                minDist = Map.findWithDefault maxBound goal visited  -- Get the known minimum distance for the goal
+                visited' = Map.insert goal currentDist visited  -- Update the visited map with the current distance for the goal
+                paths' = if currentDist < minDist
+                            then [currentPath]  -- Found a new shorter path; replace existing paths
+                            else if currentDist == minDist
+                                then currentPath : paths  -- Found a path with the same minimum distance; add to the list
+                                else paths  -- Longer path, ignore
+            in bfs rest paths' visited'  -- Continue BFS with the remaining queue
+        | otherwise =
+            let neighbors = [neighbor | (neighbor, _) <- adjacent roadMap currentCity]  -- Get neighbors of the current city
+                validNeighbors = [neighbor | neighbor <- neighbors, isValidNeighbor neighbor currentPath visited]  -- Filter valid neighbors
+                newPaths = [currentPath ++ [neighbor] | neighbor <- validNeighbors]  -- Create new paths by adding valid neighbors
+                visited' = foldl updateVisited visited validNeighbors  -- Update the visited map with new distances
+            in bfs (rest ++ newPaths) paths visited'  -- Add new paths to the queue and continue BFS
+          where
+            currentCity = last currentPath  -- Current city is the last city in the current path
+
+            -- Auxiliary function to update the map of visited cities with their minimum distances
+            updateVisited :: Map.Map City Distance -> City -> Map.Map City Distance
+            updateVisited acc neighbor =
+                let newDist = fromJust (pathDistance roadMap (currentPath ++ [neighbor]))  -- Calculate the new distance to the neighbor
+                    currentMinDist = Map.findWithDefault maxBound neighbor acc  -- Get the known minimum distance to the neighbor
+                in if newDist <= currentMinDist
+                    then Map.insert neighbor newDist acc  -- if it's smaller or equal, update 
+                    else acc  -- Keep the existing distance if it's smaller
+
+    {-
+        isValidNeighbor - Determines if a neighbor should be explored in the next level of the search.
+
+        Parameters:
+        - neighbor: Neighboring city to be checked
+        - currentPath: Current path traversed up to the current city
+        - visited: Map of known minimum distances for visited cities
+
+        Returns:
+        - True if the neighbor is not already in the current path (avoids cycles) and the distance to it does not exceed the known minimum
+    -}
+    isValidNeighbor :: City -> Path -> Map.Map City Distance -> Bool
+    isValidNeighbor neighbor currentPath visited =
+        notElem neighbor currentPath && newDist <= Map.findWithDefault maxBound neighbor visited
+      where
+        newPath = currentPath ++ [neighbor]  -- Create a new path including the neighbor
+        newDist = fromJust (pathDistance roadMap newPath)  -- Calculate the total distance of the new path
+
+    {-
+        fromJust - Extracts the value from a Maybe type, assuming it is Just.
+
+        Parameters:
+        - maybeValue: A value of type Maybe a
+
+        Returns:
+        - The value contained in Just
+
+    -}
+    fromJust :: Maybe a -> a
+    fromJust (Just x) = x
+    fromJust Nothing = error "Unexpected Nothing value in fromJust"
 
 {-- The travelSales function takes as argument a RoadMap and returns a solution of the Traveling Salesman Problem (TSP), that is the path of the traveling salesman, using a greedy approach.--}
 travelSales :: RoadMap -> Path
@@ -153,3 +222,43 @@ gTest2 = [("0","1",10),("0","2",15),("0","3",20),("1","2",35),("1","3",25),("2",
 
 gTest3 :: RoadMap -- unconnected graph
 gTest3 = [("0","1",4),("2","3",2)]
+
+-- Exemplo de RoadMap para testes
+sampleRoadMap :: RoadMap
+sampleRoadMap = [
+    ("A", "B", 5),
+    ("A", "C", 10),
+    ("B", "C", 3),
+    ("C", "D", 7),
+    ("B", "D", 2)
+    ]
+
+-- Função principal para testar a shortestPath
+main :: IO ()
+main = do
+    putStrLn "=== Teste da função shortestPath ===\n"
+
+    -- Teste 1: Caminho mais curto entre "A" e "D"
+    let path1 = shortestPath sampleRoadMap "A" "D"
+    putStrLn "Caminhos mais curtos entre 'A' e 'D':"
+    print path1  -- quero [["A","B","D"]]
+
+    -- Teste 2: Caminho mais curto entre "A" e "C"
+    let path2 = shortestPath sampleRoadMap "A" "C"
+    putStrLn "\nCaminhos mais curtos entre 'A' e 'C':"
+    print path2  -- quero [["A","B","C"]]
+
+    -- Teste 3: Caminho mais curto entre "B" e "D"
+    let path3 = shortestPath sampleRoadMap "B" "D"
+    putStrLn "\nCaminhos mais curtos entre 'B' e 'D':"
+    print path3  -- quero [["B","D"]]
+
+
+    let path4 = shortestPath sampleRoadMap "A" "A"
+    putStrLn "\nCaminhos mais curtos entre 'A' e 'A':"
+    print path4  -- quero [["A"]]
+
+
+    let path5 = shortestPath sampleRoadMap "A" "Z"
+    putStrLn "\nCaminhos mais curtos entre 'A' e 'Z':"
+    print path5  -- quero []

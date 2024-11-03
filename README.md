@@ -14,7 +14,63 @@
 > Álvaro Torres - 50%:
     > Tasks: development of the `areAdjacent`, `adjacent`, `rome`, `isStronglyConnected`, `travelSales`
 
-## shortestPath explanation
+## shortestPath Explanation
+
+The `shortestPath` function is designed to find all the shortest paths between two specified cities within a `RoadMap`. It utilizes the Breadth-First Search (BFS) algorithm to ensure that all paths found have the shortest possible distance between the cities.
+
+### Implementation Details
+
+1. **Function Signature**:
+   ```haskell
+   shortestPath :: RoadMap -> City -> City -> [Path]
+   ```
+   - Takes a `RoadMap`, a starting city (`start`), and a destination city (`goal`) as input and returns a list of paths, where each path is the shortest route from `start` to `goal`.
+
+2. **Base Case**:
+   ```haskell
+   shortestPath roadMap start goal
+       | start == goal = [[start]]  -- If the same cities, return the trivial path
+   ```
+   - If the starting city and goal city are the same, it returns a single path containing just that city.
+
+3. **Breadth-First Search (BFS) Initialization**:
+   ```haskell
+   | otherwise = bfs [[start]] [] Map.empty
+   ```
+   - The BFS is initialized with a queue containing the initial path (`[start]`). We also keep a list to accumulate found shortest paths (`paths`) and a map (`visited`) to track the minimum known distance to each city.
+
+4. **BFS Process**:
+   ```haskell
+   bfs :: [Path] -> [Path] -> Map.Map City Distance -> [Path]
+   ```
+   - The BFS explores each path in the queue, expanding paths by adding valid neighboring cities until it finds the shortest paths to the goal city. It checks each new path against the known minimum distances stored in `visited`.
+
+5. **Updating Paths**:
+   - If the current city is the goal city:
+     ```haskell
+     let currentDist = fromJust (pathDistance roadMap currentPath)
+     ```
+     - It checks if the path’s distance is shorter than the previously known minimum. If it is, it updates `visited` and stores this path as the new shortest path; otherwise, it adds paths of equal length.
+
+6. **Valid Neighbor Determination**:
+   ```haskell
+   isValidNeighbor neighbor currentPath visited
+   ```
+   - The `isValidNeighbor` function checks if a neighboring city should be added to the current path. It ensures that:
+     - The neighbor isn’t already in the path (avoiding cycles).
+     - The distance to the neighbor doesn’t exceed the minimum distance already recorded in `visited`.
+
+### Auxiliary Functions and Justifications
+
+- **`fromJust`**:
+  ```haskell
+  fromJust (Just x) = x
+  ```
+  - A helper function to extract values from `Maybe` types.
+
+- **`visited` Map**:
+  - This map efficiently stores the minimum distances to each city, allowing the BFS to focus on paths that could potentially be shorter than those already found.
+
 
 
 
